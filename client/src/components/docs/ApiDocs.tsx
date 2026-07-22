@@ -17,7 +17,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Sintetizar Áudio TTS (Usando profile_id)',
       desc: 'Se um perfil de voz salvo for informado via profile_id (obtido via GET /api/profiles), a API carrega automaticamente o motor, modelo, voz e efeitos salvos, sem necessidade de enviar os demais parâmetros de voz.',
       curl: `curl -X POST https://cromyvoice0.crom.me/api/generate \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855" \\
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "text": "Olá mundo, este áudio foi gerado com meu perfil salvo!",
@@ -40,7 +40,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Sintetizar Áudio TTS (Parâmetros Manuais)',
       desc: 'Sintetiza texto em áudio especificando manualmente o motor ("piper" ou "edge"), o modelo ONNX ou voz neural, taxa de velocidade, tom e equalização.',
       curl: `curl -X POST https://cromyvoice0.crom.me/api/generate \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855" \\
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "text": "Olá mundo, este é um teste com parâmetros manuais!",
@@ -64,7 +64,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Consulta de Status & Polling',
       desc: 'Quando enviado sync: false na geração, a API responde instantaneamente em ~50ms com o ID da tarefa. Use este endpoint para verificar se o status mudou para completed.',
       curl: `curl https://cromyvoice0.crom.me/api/status/42 \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855"`,
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY"`,
       response: `{
   "id": 42,
   "type": "audio",
@@ -80,7 +80,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Gerar Vídeo MP4 Legendado',
       desc: 'Transforma um áudio sintetizado em um vídeo MP4 com legendas dinâmicas palavra-por-palavra. Se um filtro/preset for informado via subtitle_style ("j-vid", "neon", "minimal", "box"), a API carrega automaticamente as configurações do estilo.',
       curl: `curl -X POST https://cromyvoice0.crom.me/api/video/generate \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855" \\
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "audio_id": 42,
@@ -103,7 +103,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Perfis & Presets de Vídeo Salvos',
       desc: 'Lista os presets do sistema (j-vid, neon, minimal, box) e os perfis customizados de estilo de vídeo salvos pelo usuário.',
       curl: `curl https://cromyvoice0.crom.me/api/video/profiles \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855"`,
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY"`,
       response: `{
   "system_presets": [
     {
@@ -143,7 +143,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Modelos ONNX Disponíveis',
       desc: 'Lista todos os modelos de voz ONNX do Piper instalados e disponíveis para uso imediato.',
       curl: `curl https://cromyvoice0.crom.me/api/models \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855"`,
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY"`,
       response: `{
   "installed": [
     "pt_BR-faber-medium.onnx",
@@ -159,7 +159,7 @@ export const ApiDocs: React.FC = () => {
       title: 'Perfis de Voz Salvos',
       desc: 'Lista os perfis de voz e presets de efeitos salvos pelo usuário para reutilização via profile_id.',
       curl: `curl https://cromyvoice0.crom.me/api/profiles \\
-  -H "Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855"`,
+  -H "Authorization: Bearer YOUR_CROMYVOICE_API_KEY"`,
       response: `[
   {
     "id": 1,
@@ -202,7 +202,7 @@ export const ApiDocs: React.FC = () => {
         <div>
           <span className="font-bold">Autenticação via API Key:</span> Adicione o cabeçalho{' '}
           <code className="bg-amber-950/80 px-2 py-0.5 rounded border border-amber-700/50 font-mono">
-            Authorization: Bearer cv_174a0170fd1d4b602fd24109f250b409ee83107fc1749ef905c19791d27d7855
+            Authorization: Bearer YOUR_CROMYVOICE_API_KEY
           </code>{' '}
           em todas as suas requisições.
         </div>
