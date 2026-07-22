@@ -27,9 +27,10 @@ REGRAS DE OURO DE FILTRAGEM:
    - Nomes de autores (ex: "Ryan Daws"), datas ("21 de julho de 2026"), categorias ("Categorias:", "IA em Ação", "Cibersegurança").
    - Botões de compartilhamento ("Compartilhe esta notícia"), menus de navegação, "Notícias em Destaque".
 2. NÃO CRIE CENAS para datas, nomes de autores ou títulos de categorias!
-3. FOQUE EXCLUSIVAMENTE NO CONTEÚDO PRINCIPAL da notícia/texto e transforme em uma narração fluida e cativante dividida em 4 a 8 cenas bem estruturadas.
-4. Cada cena deve ter:
-   - "narrationText": Uma frase fluida e natural para narração por voz sintetizada (TTS).
+3. NUNCA inclua saudações, introduções ou meta-textos como "Aqui está o roteiro", "Criei um roteiro", "Cena 1:", "Narrador:" no campo "narrationText". Comece DIRETO na fala narrada do conteúdo!
+4. FOQUE EXCLUSIVAMENTE NO CONTEÚDO PRINCIPAL da notícia/texto e transforme em uma narração fluida e cativante dividida em 4 a 8 cenas bem estruturadas.
+5. Cada cena deve ter:
+   - "narrationText": A fala exata que o locutor vai narrar para o espectador (sem introduções sobre o roteiro em si).
    - "visualPrompt": Descrição detalhada da cena em inglês ou português para encontrar a melhor imagem/vídeo correspondente.
 
 Responda ESTRITAMENTE em JSON sem markdown:
@@ -147,12 +148,22 @@ ${rawInformation}`;
         }
       }
 
+      const cleanNarration = (scene.narrationText || '')
+        .replace(/^(aqui está (o|um) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+        .replace(/^(criei (um|o) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+        .replace(/^(este é (um|o) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+        .replace(/^(roteiro criado[^.:!\n]*[:.]?\s*)/i, '')
+        .replace(/^(cena \d+[:.]?\s*)/i, '')
+        .replace(/^(narrador[:.]?\s*)/i, '')
+        .replace(/^["']|["']$/g, '')
+        .trim();
+
       processedScenes.push({
         id: uuidv4(),
         sceneNumber: i + 1,
-        narrationText: scene.narrationText,
+        narrationText: cleanNarration || scene.narrationText,
         visualPrompt: scene.visualPrompt,
-        estimatedDurationSeconds: scene.estimatedDurationSeconds || Math.max(4, Math.ceil(scene.narrationText.length / 15)),
+        estimatedDurationSeconds: scene.estimatedDurationSeconds || Math.max(4, Math.ceil((cleanNarration || scene.narrationText).length / 15)),
         selectedMediaId: matchedMedia?.id,
         selectedMediaUrl: matchedMedia?.url
       });

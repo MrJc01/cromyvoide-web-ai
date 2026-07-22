@@ -41,7 +41,7 @@ export const AutoVideoGenerator: React.FC = () => {
 
   // Entradas da Página Única
   const [systemPrompt, setSystemPrompt] = useState(
-    'Crie um roteiro fluido e dinâmico dividido em falas marcantes para redes sociais (Reels/TikTok/Shorts). Evite jargões complexos.'
+    'Crie um roteiro fluido e dinâmico para narração direta. NUNCA comece com saudações ou frases introdutórias como "Aqui está o roteiro" ou "Criei um roteiro". Comece DIRETO na primeira frase do conteúdo.'
   );
   const [content, setContent] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -147,7 +147,17 @@ export const AutoVideoGenerator: React.FC = () => {
         const totalScenes = scenes.length;
 
         setCurrentProgressStep(`🎙️ 3/6. Sintetizando áudio TTS da Cena ${stepNum}/${totalScenes}...`);
-        const audioRes = await synthesizeAudio(scene.narrationText, selectedModel, selectedProfileId);
+        const cleanNarrationText = (scene.narrationText || '')
+          .replace(/^(aqui está (o|um) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+          .replace(/^(criei (um|o) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+          .replace(/^(este é (um|o) roteiro[^.:!\n]*[:.]?\s*)/i, '')
+          .replace(/^(roteiro criado[^.:!\n]*[:.]?\s*)/i, '')
+          .replace(/^(cena \d+[:.]?\s*)/i, '')
+          .replace(/^(narrador[:.]?\s*)/i, '')
+          .replace(/^["']|["']$/g, '')
+          .trim() || scene.narrationText;
+
+        const audioRes = await synthesizeAudio(cleanNarrationText, selectedModel, selectedProfileId);
         if (!audioRes) throw new Error(`Falha ao sintetizar áudio para a cena ${stepNum}.`);
         updateSceneAudio(scriptRes.id, scene.id, audioRes.id, audioRes.url);
 
