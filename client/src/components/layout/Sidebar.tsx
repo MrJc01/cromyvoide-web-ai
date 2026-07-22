@@ -6,7 +6,8 @@ import {
   BookOpen,
   Sparkles,
   Search,
-  Settings
+  Settings,
+  Wand2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpenSearch }) => {
   const menuItems = [
+    { id: 'auto-generator', label: 'Vídeo Automático 1-Clique', icon: Wand2, badge: 'PRO' },
     { id: 'script', label: 'Gerador de Roteiros AI', icon: Sparkles, badge: 'IA' },
     { id: 'media-library', label: 'Biblioteca de Mídias & Grupos', icon: ImageIcon },
     { id: 'search-embedding', label: 'Busca por Embeddings', icon: Search },

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { ScriptGenerator } from './components/script/ScriptGenerator';
+import { AutoVideoGenerator } from './components/script/AutoVideoGenerator';
 import { MediaGallery } from './components/media/MediaGallery';
 import { SemanticSearchModal } from './components/media/SemanticSearchModal';
 import { VideoCreatorModal } from './components/cromyvoice/VideoCreatorModal';
@@ -13,7 +14,7 @@ import { useScriptStore } from './store/useScriptStore';
 import { Cpu, Video } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('script');
+  const [activeTab, setActiveTab] = useState<string>('auto-generator');
   const [serverConnected, setServerConnected] = useState<boolean>(true);
 
   // Modals state
@@ -87,6 +88,7 @@ export const App: React.FC = () => {
 
   const getTabTitle = () => {
     switch (activeTab) {
+      case 'auto-generator': return 'Gerador Automático de Vídeo 1-Clique';
       case 'script': return 'Gerador de Roteiro AI';
       case 'media-library': return 'Biblioteca de Mídias & Grupos';
       case 'search-embedding': return 'Busca por Embeddings';
@@ -111,6 +113,8 @@ export const App: React.FC = () => {
         <Header activeTabTitle={getTabTitle()} serverConnected={serverConnected} />
 
         <main className="flex-1 overflow-y-auto pb-12">
+          {activeTab === 'auto-generator' && <AutoVideoGenerator />}
+
           {activeTab === 'script' && (
             <ScriptGenerator
               onOpenSearchForScene={handleOpenSearchForScene}
