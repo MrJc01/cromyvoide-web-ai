@@ -121,8 +121,8 @@ export const AutoVideoGenerator: React.FC = () => {
       // ETAPA 2: Gerar Roteiro Estruturado em Cenas com Prompt do Sistema
       setCurrentProgressStep('📝 2/6. Processando conteúdo e gerando cenas narradas...');
       let scriptRes = await generateScript(
-        `${systemPrompt}\n\nCONTEÚDO BRUTO:\n${content}`,
-        'Dinâmico e Envolvente (Podcast)',
+        content,
+        systemPrompt || 'Dinâmico e Envolvente (Podcast)',
         ['all'],
         false
       );

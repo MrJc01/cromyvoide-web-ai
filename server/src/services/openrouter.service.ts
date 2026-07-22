@@ -19,10 +19,19 @@ class OpenRouterService {
     let scenesData: any[] = [];
     let scriptTitle = 'Roteiro de Vídeo';
 
+    // 0. Constrói Contexto RAG de Mídias com descrições vetoriais da galeria
+    const allMedia = db.getMedia();
+    let mediaRagContext = '';
+    if (allMedia.length > 0) {
+      mediaRagContext = '\n\nMÍDIAS DISPONÍVEIS NA GALERIA (Contexto Visual RAG):\n' +
+        allMedia.map((m, idx) => `- Mídia ${idx + 1} [ID: ${m.id}]: "${m.description || m.originalname}"`).join('\n') +
+        '\n\nREGRA RAG IMPORTANTE: Se alguma das mídias acima for relevante para uma cena, inclua o campo "selectedMediaId" com o ID exato da mídia.';
+    }
+
     const systemPrompt = `Você é um roteirista profissional especialista em criar roteiros virais e podcasts envolventes.
 Sua missão é LER e SINTETIZAR as informações brutas enviadas pelo usuário para criar um ROTEIRO COMPLETO DE VÍDEO.
 
-REGRAS DE OURO DE FILTRAGEM:
+REGRAS DE OURO DE FILTRAGEM & RAG:
 1. IGNORE COMPLETAMENTE metadados de sites e notícias, como:
    - Nomes de autores (ex: "Ryan Daws"), datas ("21 de julho de 2026"), categorias ("Categorias:", "IA em Ação", "Cibersegurança").
    - Botões de compartilhamento ("Compartilhe esta notícia"), menus de navegação, "Notícias em Destaque".
@@ -31,7 +40,9 @@ REGRAS DE OURO DE FILTRAGEM:
 4. FOQUE EXCLUSIVAMENTE NO CONTEÚDO PRINCIPAL da notícia/texto e transforme em uma narração fluida e cativante dividida em 4 a 8 cenas bem estruturadas.
 5. Cada cena deve ter:
    - "narrationText": A fala exata que o locutor vai narrar para o espectador (sem introduções sobre o roteiro em si).
-   - "visualPrompt": Descrição detalhada da cena em inglês ou português para encontrar a melhor imagem/vídeo correspondente.
+   - "visualPrompt": Descrição detalhada da cena para busca vetorial de imagens.
+   - "selectedMediaId": (opcional) O ID da mídia da galeria que melhor combina com a cena.
+${mediaRagContext}
 
 Responda ESTRITAMENTE em JSON sem markdown:
 {
@@ -39,8 +50,9 @@ Responda ESTRITAMENTE em JSON sem markdown:
   "scenes": [
     {
       "sceneNumber": 1,
-      "narrationText": "O Google acaba de anunciar o lançamento do Gemini 3.6 Flash...",
-      "visualPrompt": "Logotipo e gráficos futuristas de inteligência artificial do Google Gemini em alta definição"
+      "narrationText": "O modelo de pesos abertos Kimi K3 traz uma revolução em arquitetura de memória...",
+      "visualPrompt": "Gráfico explicativo sobre a arquitetura do modelo de inteligência artificial",
+      "selectedMediaId": "id-da-midia-opcional"
     }
   ]
 }`;
@@ -52,9 +64,9 @@ ${rawInformation}`;
 
     // 1. Chamada via Google AI Studio API (Gemini API direct)
     const aiStudioKey = CONFIG.AISTUDIO_API_KEY;
-    if (aiStudioKey) {
+    if (aiStudioKey && aiStudioKey.startsWith('AIzaSy')) {
       try {
-        console.log('🤖 [AIService] Solicitando geração de roteiro profissional ao Gemini API (AI Studio)...');
+        console.log('🤖 [AIService] Solicitando geração de roteiro RAG ao Gemini API (AI Studio)...');
         const response = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${aiStudioKey}`,
           {
@@ -79,7 +91,7 @@ ${rawInformation}`;
           const parsed = JSON.parse(textResponse.replace(/```json|```/g, '').trim());
           scriptTitle = parsed.title || scriptTitle;
           scenesData = parsed.scenes || [];
-          console.log(`✅ [AIService] Roteiro de ${scenesData.length} cenas gerado via AI Studio Gemini!`);
+          console.log(`✅ [AIService] Roteiro RAG de ${scenesData.length} cenas gerado via AI Studio Gemini!`);
         }
       } catch (err: any) {
         console.warn('⚠️ [AIService] Falha na API do AI Studio, tentando OpenRouter fallback...', err?.response?.data || err?.message);
@@ -89,7 +101,7 @@ ${rawInformation}`;
     // 2. Chamada via OpenRouter se AI Studio não retornar
     if (scenesData.length === 0 && CONFIG.OPENROUTER_API_KEY && CONFIG.OPENROUTER_API_KEY.startsWith('sk-or-')) {
       try {
-        console.log('🤖 [AIService] Solicitando roteiro via OpenRouter API...');
+        console.log('🤖 [AIService] Solicitando roteiro RAG via OpenRouter API...');
         const response = await axios.post(
           'https://openrouter.ai/api/v1/chat/completions',
           {
@@ -122,12 +134,12 @@ ${rawInformation}`;
 
     // 3. Fallback inteligente com limpeza de metadados se nenhuma chave responder
     if (!scenesData || scenesData.length === 0) {
-      console.log('ℹ️ [AIService] Usando sanitizador de texto inteligente para criar o roteiro.');
+      console.log('ℹ️ [AIService] Usando sanitizador de texto RAG inteligente para criar o roteiro.');
       scenesData = this.generateCleanedFallbackScenes(rawInformation);
       scriptTitle = `Roteiro: ${rawInformation.slice(0, 40).replace(/[\n\r]/g, ' ').trim()}...`;
     }
 
-    // 4. Busca por similaridade vetorial para cada cena válida
+    // 4. Busca por similaridade vetorial para cada cena válida (RAG Matching)
     const minScore = params.minSimilarityScore || 0.35;
     const requireMin = params.requireMinSimilarityThreshold ?? true;
 
@@ -136,15 +148,24 @@ ${rawInformation}`;
       const scene = scenesData[i];
       const visualSearchPrompt = scene.visualPrompt || scene.narrationText;
 
-      const searchResults = await vectorStoreService.searchByText(visualSearchPrompt, groupIds, 1);
-      
       let matchedMedia = undefined;
-      if (searchResults.length > 0) {
-        const topMatch = searchResults[0];
-        if (!requireMin || topMatch.similarity >= minScore) {
-          matchedMedia = topMatch.media;
-        } else {
-          console.log(`ℹ️ [AIService] Cena ${i + 1}: Match de mídia insuficiente (${(topMatch.similarity * 100).toFixed(1)}% < ${(minScore * 100).toFixed(0)}%). Deixando sem mídia.`);
+
+      // Se o LLM já indicou uma mídia do RAG context:
+      if (scene.selectedMediaId) {
+        const found = allMedia.find(m => m.id === scene.selectedMediaId);
+        if (found) matchedMedia = found;
+      }
+
+      // Senão faz a busca por similaridade vetorial por embeddings
+      if (!matchedMedia) {
+        const searchResults = await vectorStoreService.searchByText(visualSearchPrompt, groupIds, 1);
+        if (searchResults.length > 0) {
+          const topMatch = searchResults[0];
+          if (!requireMin || topMatch.similarity >= minScore) {
+            matchedMedia = topMatch.media;
+          } else {
+            console.log(`ℹ️ [AIService] Cena ${i + 1}: Match de mídia insuficiente (${(topMatch.similarity * 100).toFixed(1)}% < ${(minScore * 100).toFixed(0)}%). Deixando sem mídia.`);
+          }
         }
       }
 
@@ -162,7 +183,7 @@ ${rawInformation}`;
         id: uuidv4(),
         sceneNumber: i + 1,
         narrationText: cleanNarration || scene.narrationText,
-        visualPrompt: scene.visualPrompt,
+        visualPrompt: scene.visualPrompt || 'Conceito visual da cena',
         estimatedDurationSeconds: scene.estimatedDurationSeconds || Math.max(4, Math.ceil((cleanNarration || scene.narrationText).length / 15)),
         selectedMediaId: matchedMedia?.id,
         selectedMediaUrl: matchedMedia?.url
@@ -183,7 +204,7 @@ ${rawInformation}`;
   }
 
   /**
-   * Sanitizador de Fallback: Remove metadados, datas, nomes de autores e cabeçalhos de noticias
+   * Sanitizador de Fallback: Remove metadados, datas, nomes de autores e cabeçalhos de notícias
    */
   private generateCleanedFallbackScenes(text: string): any[] {
     const lines = text.split(/\n+/);
@@ -191,7 +212,8 @@ ${rawInformation}`;
 
     const noisePatterns = [
       /ryan daws/i,
-      /\d+\s+de\s+[a-z]+\s+de\s+\d+/i, // 21 de julho de 2026
+      /dashveenjit kaur/i,
+      /\d+\s+de\s+[a-z]+\s+de\s+\d+/i, // 20 de julho de 2026
       /compartilhe esta/i,
       /categorias:/i,
       /notícias em destaque/i,
@@ -205,7 +227,8 @@ ${rawInformation}`;
       /ia multimodal/i,
       /ia no governo/i,
       /ia em finanças/i,
-      /ia em cibersegurança/i
+      /ia em cibersegurança/i,
+      /fonte:/i
     ];
 
     for (const line of lines) {
@@ -230,21 +253,21 @@ ${rawInformation}`;
       return [
         {
           sceneNumber: 1,
-          narrationText: 'O Google lançou o Gemini 3.6 Flash para reduzir custos e latência em agentes de IA.',
-          visualPrompt: 'Tecnologia de Inteligência Artificial do Google Gemini',
+          narrationText: 'O modelo de pesos abertos Kimi K3 representa um avanço significativo em arquitetura de memória.',
+          visualPrompt: 'Gráfico e arquitetura de modelo de inteligência artificial',
           estimatedDurationSeconds: 5
         }
       ];
     }
 
-    // Agrupa 2 frases por cena para criar narrações fluidas de verdade
+    // Agrupa frases significativas em narrações diretas sem intros metalinguísticas
     const scenes: any[] = [];
     let currentNarration = '';
     let sceneCounter = 1;
 
-    for (let i = 0; i < sentences.length && scenes.length < 6; i++) {
+    for (let i = 0; i < sentences.length && scenes.length < 8; i++) {
       currentNarration += (currentNarration ? ' ' : '') + sentences[i];
-      if (currentNarration.length > 100 || i === sentences.length - 1) {
+      if (currentNarration.length > 90 || i === sentences.length - 1) {
         scenes.push({
           sceneNumber: sceneCounter++,
           narrationText: currentNarration,

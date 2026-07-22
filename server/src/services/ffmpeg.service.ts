@@ -264,6 +264,21 @@ class FFmpegService {
   }
 
   /**
+   * Obtém a duração exata em segundos de um arquivo de mídia (áudio ou vídeo) via ffprobe
+   */
+  public async getMediaDuration(filepath: string): Promise<number> {
+    return new Promise((resolve) => {
+      ffmpeg.ffprobe(filepath, (err, metadata) => {
+        if (err || !metadata?.format?.duration) {
+          resolve(0);
+        } else {
+          resolve(metadata.format.duration);
+        }
+      });
+    });
+  }
+
+  /**
    * Mescla a mídia ou cor sólida de fundo com o vídeo CromyVoice posicionado em uma das 9 posições da grade
    */
   public async renderSceneComposition(params: ComposeSceneParams): Promise<{ outputUrl: string; filename: string }> {
@@ -277,7 +292,6 @@ class FFmpegService {
 
     const scale = params.overlayScale || 0.7;
     const pos = params.overlayPosition || 'center';
-    const duration = params.durationSeconds || 10;
     const squareDim = Math.round(720 * scale);
 
     // Calcula a expressão de posição do overlay
@@ -305,34 +319,36 @@ class FFmpegService {
         return { outputUrl: params.cromyVoiceVideoUrl || '', filename };
       }
 
+      // Obtém a duração EXATA de áudio e legenda do vídeo CromyVoice (para sincronia 1:1 perfeita)
+      const exactDuration = await this.getMediaDuration(cromyVideoPath);
+      const sceneDuration = exactDuration > 0 ? exactDuration : (params.durationSeconds || 6);
+
       const overlayExpr = getOverlayExpr(pos);
       const hasBgImage = overlaySourcePath && fs.existsSync(overlaySourcePath);
       const hexColor = (params.bgColor || '#000000').replace('#', '0x');
 
-      console.log(`🎥 [FFmpegService] Renderizando composição (fundo: ${hasBgImage ? overlaySourcePath : hexColor}, overlay: ${squareDim}x${squareDim} em ${pos})...`);
+      console.log(`🎥 [FFmpegService] Compondo cena (duração exata: ${sceneDuration.toFixed(2)}s, overlay: ${squareDim}x${squareDim} em ${pos})...`);
 
       return new Promise((resolve) => {
-        // Montar o comando FFmpeg manualmente via argumentos para maior controle
         const args: string[] = [];
 
         if (hasBgImage) {
-          // Input 0: Imagem de fundo em loop
-          args.push('-loop', '1', '-i', overlaySourcePath!, '-t', String(duration));
+          args.push('-loop', '1', '-i', overlaySourcePath!, '-t', String(sceneDuration + 0.1));
         } else {
-          // Input 0: Cor sólida de fundo
-          args.push('-f', 'lavfi', '-i', `color=c=${hexColor}:s=1280x720:d=${duration}`);
+          args.push('-f', 'lavfi', '-i', `color=c=${hexColor}:s=1280x720:d=${sceneDuration + 0.1}`);
         }
 
-        // Input 1: Vídeo overlay (CromyVoice)
         args.push('-i', cromyVideoPath);
 
-        // Filtro: Escala o fundo para 1280x720 + escala o overlay para quadrado + posiciona
         const bgScale = hasBgImage ? '[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[bg];' : '[0:v]copy[bg];';
-        const filterComplex = `${bgScale}[1:v]scale=${squareDim}:${squareDim}[over];[bg][over]overlay=${overlayExpr}`;
+        const filterComplex = `${bgScale}[1:v]scale=${squareDim}:${squareDim}[over];[bg][over]overlay=${overlayExpr}[outv]`;
 
         args.push('-filter_complex', filterComplex);
-        args.push('-map', '1:a?'); // Mapeia áudio do overlay (se existir)
-        args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-t', String(duration));
+        args.push('-map', '[outv]');
+        args.push('-map', '1:a?');
+        args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '30');
+        args.push('-c:a', 'aac', '-ar', '44100');
+        args.push('-t', String(sceneDuration));
         args.push('-y', outputPath);
 
         const { execFile } = require('child_process');
@@ -341,7 +357,7 @@ class FFmpegService {
             console.error(`⚠️ [FFmpegService] Erro na composição FFmpeg (code ${error.code}):`, stderr?.slice(-300));
             resolve({ outputUrl: params.cromyVoiceVideoUrl || '', filename });
           } else {
-            console.log(`✅ [FFmpegService] Composição finalizada: ${filename}`);
+            console.log(`✅ [FFmpegService] Composição finalizada com sincronia 1:1 (${sceneDuration.toFixed(2)}s): ${filename}`);
             resolve({ outputUrl: `/uploads/outputs/${filename}`, filename });
           }
         });
