@@ -51,10 +51,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(CONFIG.PORT, () => {
+app.listen(Number(CONFIG.PORT), '0.0.0.0', () => {
   console.log(`
   🚀 ======================================================
-  🎙️ CromyVoice AI Studio Pro API REST rodando na porta ${CONFIG.PORT}
+  🎙️ CromyVoice AI Studio Pro API REST rodando na porta ${CONFIG.PORT} (0.0.0.0)
   🔗 API Health: http://localhost:${CONFIG.PORT}/api/health
   📁 Static Uploads: http://localhost:${CONFIG.PORT}/uploads
   ======================================================

@@ -11,7 +11,11 @@ export const renderCompositeVideo = async (req: Request, res: Response): Promise
       cromyVoiceAudioUrl,
       durationSeconds,
       overlayPosition = 'center',
-      overlayScale = 0.7
+      overlayScale = 0.7,
+      layoutMode = 'overlay',
+      splitRatio = 0.5,
+      objectFit = 'contain',
+      hideBackground = false
     } = req.body;
 
     const renderResult = await ffmpegService.renderSceneComposition({
@@ -21,7 +25,11 @@ export const renderCompositeVideo = async (req: Request, res: Response): Promise
       cromyVoiceAudioUrl,
       durationSeconds: Number(durationSeconds) || 6,
       overlayPosition,
-      overlayScale: Number(overlayScale) || 0.7
+      overlayScale: Number(overlayScale) || 0.7,
+      layoutMode,
+      splitRatio: Number(splitRatio) || 0.5,
+      objectFit,
+      hideBackground: Boolean(hideBackground)
     });
 
     res.json({
@@ -66,7 +74,7 @@ export const concatAudiosAndGenerateMaster = async (req: Request, res: Response)
     res.json({
       success: true,
       message: 'Áudios concatenados e vídeo MP4 mestre completo gerado no CromyVoice com sucesso!',
-      masterAudioUrl: masterAudio.outputUrl,
+      masterAudioUrl: masterAudio,
       cromyAudioId: cromyAudioRes.id,
       cromyVideoUrl: cromyVideoRes.url,
       cromyVideoId: cromyVideoRes.id

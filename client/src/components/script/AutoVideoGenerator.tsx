@@ -19,8 +19,10 @@ import {
   Film,
   Layers,
   LayoutGrid,
-  ShieldCheck
+  ShieldCheck,
+  Scissors
 } from 'lucide-react';
+import { VideoTimelineEditorModal } from '../cromyvoice/VideoTimelineEditorModal';
 
 export type OverlayPosition9 =
   | 'top-left'
@@ -53,7 +55,17 @@ export const AutoVideoGenerator: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentProgressStep, setCurrentProgressStep] = useState<string>('');
   const [progressPercentage, setProgressPercentage] = useState<number>(0);
+  const [isTimelineEditorOpen, setIsTimelineEditorOpen] = useState(false);
   const [finalMasterVideoUrl, setFinalMasterVideoUrl] = useState<string>('');
+
+  // Botão de Disparo do Pipeline Automático ou Abertura da Timeline
+  const handleOpenTimelineEditor = async () => {
+    if (!currentScript || currentScript.scenes.length === 0) {
+      alert('Por favor, gere ou carregue um roteiro antes de abrir o editor de timeline.');
+      return;
+    }
+    setIsTimelineEditorOpen(true);
+  };
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -393,12 +405,23 @@ export const AutoVideoGenerator: React.FC = () => {
           </div>
         )}
 
-        {/* Botão de Disparo do Pipeline Automático */}
-        <div className="flex justify-end pt-2">
+        {/* Botão de Disparo do Pipeline Automático + Editor de Timeline */}
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+          {currentScript && currentScript.scenes.length > 0 && (
+            <button
+              onClick={handleOpenTimelineEditor}
+              disabled={isProcessing}
+              className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-bold px-6 py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all"
+            >
+              <Scissors className="w-4 h-4 text-pink-400" />
+              <span>🎬 ABRIR EDITOR DE TIMELINE (Pré-Etapa Editável)</span>
+            </button>
+          )}
+
           <button
             onClick={handleStartFullAutomatedPipeline}
             disabled={isProcessing || !content.trim()}
-            className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 via-indigo-600 to-pink-600 hover:opacity-95 disabled:opacity-50 text-white text-sm font-extrabold px-10 py-5 rounded-2xl shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all"
+            className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 via-indigo-600 to-pink-600 hover:opacity-95 disabled:opacity-50 text-white text-sm font-extrabold px-10 py-4 rounded-2xl shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all"
           >
             {isProcessing ? (
               <>
@@ -408,12 +431,43 @@ export const AutoVideoGenerator: React.FC = () => {
             ) : (
               <>
                 <Wand2 className="w-5 h-5" />
-                <span>🎬 GERAR VÍDEO COMPLETO AUTOMÁTICO (1-Clique)</span>
+                <span>⚡ GERAR VÍDEO COMPLETO (1-Clique)</span>
               </>
             )}
           </button>
         </div>
       </div>
+
+      {/* MODAL DO EDITOR DE TIMELINE */}
+      {isTimelineEditorOpen && currentScript && (
+        <VideoTimelineEditorModal
+          isOpen={isTimelineEditorOpen}
+          onClose={() => setIsTimelineEditorOpen(false)}
+          fullText={currentScript.rawText}
+          scenes={currentScript.scenes.map(s => ({
+            id: s.id,
+            sceneNumber: s.sceneNumber,
+            narrationText: s.narrationText,
+            visualPrompt: s.visualPrompt,
+            estimatedDurationSeconds: s.estimatedDurationSeconds || 5,
+            selectedMediaId: s.selectedMediaId,
+            selectedMediaUrl: s.selectedMediaUrl,
+            cromyVoiceVideoUrl: (s as any).cromyVoiceVideoUrl,
+            cromyVoiceAudioUrl: (s as any).cromyVoiceAudioUrl,
+            layoutMode: 'overlay',
+            splitRatio: 0.5,
+            objectFit: 'contain',
+            hideBackground: false,
+            bgColor: '#000000',
+            overlayPosition: 'center',
+            overlayScale: overlayScale
+          }))}
+          onRenderComplete={(outputUrl) => {
+            setFinalMasterVideoUrl(outputUrl);
+            setIsTimelineEditorOpen(false);
+          }}
+        />
+      )}
 
       {/* Exibição do Vídeo Mestre Final Renderizado */}
       {finalMasterVideoUrl && (

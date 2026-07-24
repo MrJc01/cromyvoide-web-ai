@@ -201,7 +201,11 @@ export const api = {
     durationSeconds?: number,
     overlayPosition: 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'full' = 'center',
     overlayScale: number = 0.7,
-    bgColor: string = '#000000'
+    bgColor: string = '#000000',
+    layoutMode: 'overlay' | 'split-horizontal' | 'split-vertical' | 'full-bg' = 'overlay',
+    splitRatio: number = 0.5,
+    objectFit: 'contain' | 'cover' = 'contain',
+    hideBackground: boolean = false
   ): Promise<{ outputUrl: string; filename: string }> => {
     const res = await axios.post(`${API_BASE}/render/composite`, {
       bgMediaPath,
@@ -210,7 +214,11 @@ export const api = {
       cromyVoiceAudioUrl,
       durationSeconds,
       overlayPosition,
-      overlayScale
+      overlayScale,
+      layoutMode,
+      splitRatio,
+      objectFit,
+      hideBackground
     });
     return res.data;
   },

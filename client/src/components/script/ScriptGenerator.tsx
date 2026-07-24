@@ -64,6 +64,7 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
   const {
     models,
     profiles,
+    videoProfiles,
     selectedModel,
     setSelectedModel,
     selectedProfileId,
@@ -256,16 +257,45 @@ export const ScriptGenerator: React.FC<ScriptGeneratorProps> = ({
                   Perfil Salvo (profile_id):
                 </label>
                 <select
-                  value={selectedProfileId || ''}
+                  value={selectedProfileId ?? ''}
                   onChange={(e) => setSelectedProfileId(e.target.value ? Number(e.target.value) : undefined)}
                   className="glass-input w-full px-3 py-2 rounded-xl text-xs"
                 >
                   <option value="" className="bg-slate-900">Nenhum (Direto)</option>
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-slate-900 text-white">
-                      Preset {p.id}: {p.name}
-                    </option>
-                  ))}
+
+                  {profiles.length > 0 && (
+                    <optgroup label="🎙️ Perfis de Voz TTS">
+                      {profiles.map((p) => (
+                        <option key={`tts-${p.id}`} value={p.id} className="bg-slate-900 text-white">
+                          Perfil Voz #{p.id}: {p.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+
+                  {videoProfiles && (
+                    <>
+                      {videoProfiles.user_profiles && videoProfiles.user_profiles.length > 0 && (
+                        <optgroup label="🎬 Perfis de Vídeo (Usuário)">
+                          {videoProfiles.user_profiles.map((vp) => (
+                            <option key={`vid-user-${vp.id}`} value={vp.id} className="bg-slate-900 text-white">
+                              Perfil Vídeo #{vp.id}: {vp.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+
+                      {videoProfiles.system_presets && videoProfiles.system_presets.length > 0 && (
+                        <optgroup label="⚡ Presets de Vídeo (Sistema)">
+                          {videoProfiles.system_presets.map((sp) => (
+                            <option key={`vid-sys-${sp.id}`} value={sp.id} className="bg-slate-900 text-white">
+                              Preset Vídeo #{sp.id}: {sp.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </>
+                  )}
                 </select>
               </div>
 

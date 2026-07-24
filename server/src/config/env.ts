@@ -13,4 +13,5 @@ export const CONFIG = {
   CROMYVOICE_BASE_URL: process.env.CROMYVOICE_BASE_URL || 'https://cromyvoice0.crom.me',
   UPLOADS_DIR: path.resolve(__dirname, '../../uploads'),
   DATA_FILE: path.resolve(__dirname, '../../db_store.json'),
+  SQLITE_FILE: path.resolve(__dirname, '../../database.sqlite'),
 };

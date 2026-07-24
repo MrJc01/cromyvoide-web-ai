@@ -54,7 +54,11 @@ interface CromyVoiceState {
     durationSeconds?: number,
     overlayPosition?: 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'full',
     overlayScale?: number,
-    bgColor?: string
+    bgColor?: string,
+    layoutMode?: 'overlay' | 'split-horizontal' | 'split-vertical' | 'full-bg',
+    splitRatio?: number,
+    objectFit?: 'contain' | 'cover',
+    hideBackground?: boolean
   ) => Promise<string | void>;
   concatAudiosAndGenerateVideo: (audioUrls: string[], fullText?: string, subtitleStyle?: string) => Promise<string | void>;
 }
@@ -133,7 +137,7 @@ export const useCromyVoiceStore = create<CromyVoiceState>((set, get) => ({
     }
   },
 
-  renderCompositeVideo: async (bgMediaPath, cromyVoiceVideoUrl, cromyVoiceAudioUrl, durationSeconds, overlayPosition = 'center', overlayScale = 0.7, bgColor = '#000000') => {
+  renderCompositeVideo: async (bgMediaPath, cromyVoiceVideoUrl, cromyVoiceAudioUrl, durationSeconds, overlayPosition = 'center', overlayScale = 0.7, bgColor = '#000000', layoutMode = 'overlay', splitRatio = 0.5, objectFit = 'contain', hideBackground = false) => {
     set({ isComposing: true, error: null });
     try {
       const res = await api.renderComposite(
@@ -143,7 +147,11 @@ export const useCromyVoiceStore = create<CromyVoiceState>((set, get) => ({
         durationSeconds,
         overlayPosition,
         overlayScale,
-        bgColor
+        bgColor,
+        layoutMode,
+        splitRatio,
+        objectFit,
+        hideBackground
       );
       set({ isComposing: false });
       return res.outputUrl;
