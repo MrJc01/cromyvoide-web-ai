@@ -4,6 +4,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { ScriptGenerator } from './components/script/ScriptGenerator';
 import { AutoVideoGenerator } from './components/script/AutoVideoGenerator';
+import { VideoEditorStudio } from './components/editor/VideoEditorStudio';
 import { MediaGallery } from './components/media/MediaGallery';
 import { SemanticSearchModal } from './components/media/SemanticSearchModal';
 import { VideoCreatorModal } from './components/cromyvoice/VideoCreatorModal';
@@ -14,7 +15,7 @@ import { useScriptStore } from './store/useScriptStore';
 import { Cpu, Video } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('auto-generator');
+  const [activeTab, setActiveTab] = useState<string>('timeline-studio');
   const [serverConnected, setServerConnected] = useState<boolean>(true);
 
   // Modals state
@@ -88,6 +89,7 @@ export const App: React.FC = () => {
 
   const getTabTitle = () => {
     switch (activeTab) {
+      case 'timeline-studio': return 'Editor de Vídeo Studio Pro';
       case 'auto-generator': return 'Gerador Automático de Vídeo 1-Clique';
       case 'script': return 'Gerador de Roteiro AI';
       case 'media-library': return 'Biblioteca de Mídias & Grupos';
@@ -112,7 +114,9 @@ export const App: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <Header activeTabTitle={getTabTitle()} serverConnected={serverConnected} />
 
-        <main className="flex-1 overflow-y-auto pb-12">
+        <main className={`flex-1 min-h-0 ${activeTab === 'timeline-studio' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto pb-12'}`}>
+          {activeTab === 'timeline-studio' && <VideoEditorStudio />}
+
           {activeTab === 'auto-generator' && <AutoVideoGenerator />}
 
           {activeTab === 'script' && (

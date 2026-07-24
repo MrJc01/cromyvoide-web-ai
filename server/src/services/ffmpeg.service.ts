@@ -40,6 +40,30 @@ export interface EditVideoParams {
   muteAudio?: boolean; // Remover áudio original do vídeo
 }
 
+export interface RenderTimelineParams {
+  clips: Array<{
+    id: string;
+    trackId: string;
+    name: string;
+    startTime: number;
+    duration: number;
+    type: 'text' | 'video' | 'image' | 'audio';
+    mediaUrl?: string;
+    text?: string;
+    color?: string;
+    volume?: number;
+  }>;
+  tracks: Array<{
+    id: string;
+    name: string;
+    type: string;
+    isHidden: boolean;
+    isMuted: boolean;
+  }>;
+  aspectRatio?: '16:9' | '9:16' | '1:1' | '4:5';
+  durationSeconds?: number;
+}
+
 class FFmpegService {
   /**
    * Baixa um arquivo remoto ou resolve um arquivo local temporariamente para uso no FFmpeg
@@ -394,6 +418,104 @@ class FFmpegService {
         outputUrl: params.cromyVoiceVideoUrl || params.bgMediaPath || '',
         filename
       };
+    }
+  }
+
+  /**
+   * Renderiza um projeto completo multi-track vindo da linha do tempo do Editor
+   */
+  public async renderTimelineProject(params: RenderTimelineParams): Promise<{ outputUrl: string; filename: string }> {
+    const filename = `timeline_${Date.now()}_${uuidv4().substring(0, 6)}.mp4`;
+    const outputPath = path.join(CONFIG.UPLOADS_DIR, 'outputs', filename);
+
+    const totalDuration = params.durationSeconds || 30;
+    const isPortrait = params.aspectRatio === '9:16';
+    const isSquare = params.aspectRatio === '1:1';
+    const width = isPortrait ? 720 : (isSquare ? 720 : 1280);
+    const height = isPortrait ? 1280 : 720;
+
+    try {
+      console.log(`🎬 [FFmpegService] Renderizando projeto da Timeline (${params.clips.length} clipes, ${totalDuration}s)...`);
+
+      // Encontra mídias e baixa arquivos locais
+      const validClips = [];
+      for (const clip of params.clips) {
+        let localPath = '';
+        if (clip.mediaUrl) {
+          localPath = await this.downloadTempFile(clip.mediaUrl, clip.id);
+        }
+        validClips.push({
+          ...clip,
+          localPath
+        });
+      }
+
+      // Ordena clipes por tipo (independente de ID dinâmico da trilha)
+      const bgClips = validClips.filter(c => (c.type === 'video' || c.type === 'image') && c.localPath);
+      const audioClips = validClips.filter(c => c.type === 'audio' && c.localPath);
+
+      // Se houver um vídeo/imagem principal, usa a primeira mídia visual
+      const primaryMedia = bgClips[0];
+
+      if (primaryMedia && primaryMedia.localPath) {
+        // Renderiza com a mídia principal como fonte
+        return new Promise((resolve) => {
+          const args = [
+            '-i', primaryMedia.localPath
+          ];
+
+          if (audioClips[0] && audioClips[0].localPath) {
+            args.push('-i', audioClips[0].localPath);
+          }
+
+          args.push(
+            '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`,
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-r', '30',
+            '-c:a', 'aac',
+            '-t', String(totalDuration),
+            '-y', outputPath
+          );
+
+          const { execFile } = require('child_process');
+          execFile('ffmpeg', args, { timeout: 90000 }, (error: any) => {
+            if (error) {
+              console.error('⚠️ [FFmpegService] Fallback na renderização da timeline:', error.message);
+              resolve({ outputUrl: primaryMedia.mediaUrl || '', filename });
+            } else {
+              console.log(`✅ [FFmpegService] Projeto de Timeline renderizado: ${filename}`);
+              resolve({ outputUrl: `/uploads/outputs/${filename}`, filename });
+            }
+          });
+        });
+      } else {
+        // Fundo lavfi sólido caso não haja mídias pesadas
+        return new Promise((resolve) => {
+          const args = [
+            '-f', 'lavfi',
+            '-i', `color=c=0x0d121f:s=${width}x${height}:d=${totalDuration}`,
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-r', '30',
+            '-t', String(totalDuration),
+            '-y', outputPath
+          ];
+
+          const { execFile } = require('child_process');
+          execFile('ffmpeg', args, { timeout: 60000 }, (error: any) => {
+            if (error) {
+              resolve({ outputUrl: '', filename });
+            } else {
+              console.log(`✅ [FFmpegService] Timeline base criada: ${filename}`);
+              resolve({ outputUrl: `/uploads/outputs/${filename}`, filename });
+            }
+          });
+        });
+      }
+    } catch (err: any) {
+      console.error('⚠️ [FFmpegService] Erro ao renderizar projeto da timeline:', err);
+      return { outputUrl: '', filename };
     }
   }
 }

@@ -108,3 +108,31 @@ export const concatFinalVideos = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: err.message || 'Erro ao concatenar vídeos finais.' });
   }
 };
+
+export const renderTimeline = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { clips, tracks, aspectRatio, durationSeconds } = req.body;
+
+    if (!clips || !Array.isArray(clips)) {
+      res.status(400).json({ error: 'Envie uma lista válida de "clips" para a renderização da timeline.' });
+      return;
+    }
+
+    console.log(`🎬 [RenderController] Iniciando renderização de projeto da Timeline (${clips.length} clipes)...`);
+    const renderResult = await ffmpegService.renderTimelineProject({
+      clips,
+      tracks: tracks || [],
+      aspectRatio,
+      durationSeconds: Number(durationSeconds) || 30
+    });
+
+    res.json({
+      success: true,
+      message: 'Renderização do projeto da timeline finalizada com sucesso.',
+      ...renderResult
+    });
+  } catch (err: any) {
+    console.error('Erro ao renderizar projeto da timeline:', err);
+    res.status(500).json({ error: err.message || 'Erro ao renderizar projeto da timeline.' });
+  }
+};

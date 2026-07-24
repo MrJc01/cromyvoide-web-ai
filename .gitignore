@@ -38,3 +38,5 @@ Thumbs.db
 .gemini/
 .idea/
 .vscode/
+server/uploads/*
+server/database.sqlite*
